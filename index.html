@@ -91,10 +91,10 @@
 
     let bird, pipes, score, highScore, frames, gameRunning = true, deadFrame = -1;
 
-    const gravity = 0.4;
+    const gravity = 0.5;
     const jump = -6;
     const pipeGap = 200;
-    const pipeSpeed = 4;
+    const pipeSpeed = 6;
 
     highScore = localStorage.getItem("flappyHighScore") || 0;
     highScoreDisplay.textContent = highScore;
