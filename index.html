@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Flappy Facile</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #70c5ce;
+      font-family: sans-serif;
+      touch-action: manipulation;
+    }
+    canvas {
+      display: block;
+    }
+    #scoreboard {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 24px;
+      color: white;
+      font-weight: bold;
+      text-shadow: 1px 1px 2px black;
+      z-index: 10;
+    }
+    #gameOverScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      font-size: 32px;
+      font-weight: bold;
+      z-index: 20;
+      display: none;
+    }
+    #retryButton {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 20px;
+      background: #00bfff;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    #retryButton:hover {
+      background: #0099cc;
+    }
+  </style>
+</head>
+<body>
+  <div id="scoreboard">
+    Score : <span id="score">0</span> | Meilleur : <span id="highScore">0</span>
+  </div>
+
+  <div id="gameOverScreen">
+    💥 Game Over 💥<br>
+    Score : <span id="finalScore">0</span><br>
+    Meilleur : <span id="finalHighScore">0</span>
+    <button id="retryButton">Rejouer</button>
+  </div>
+
+  <canvas id="gameCanvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    const scoreboard = document.getElementById("score");
+    const highScoreDisplay = document.getElementById("highScore");
+    const gameOverScreen = document.getElementById("gameOverScreen");
+    const finalScoreDisplay = document.getElementById("finalScore");
+    const finalHighScoreDisplay = document.getElementById("finalHighScore");
+    const retryButton = document.getElementById("retryButton");
+
+    let bird, pipes, score, highScore, frames, gameRunning = true, deadFrame = -1;
+
+    const gravity = 0.4;
+    const jump = -6;
+    const pipeGap = 200;
+    const pipeSpeed = 4;
+
+    highScore = localStorage.getItem("flappyHighScore") || 0;
+    highScoreDisplay.textContent = highScore;
+
+    function initGame() {
+      bird = {
+        x: canvas.width / 4,
+        y: canvas.height / 2,
+        size: 30,
+        velocity: 0
+      };
+      pipes = [];
+      score = 0;
+      frames = 0;
+      gameRunning = true;
+      deadFrame = -1;
+      scoreboard.textContent = score;
+      gameOverScreen.style.display = "none";
+    }
+
+    function createPipe() {
+      const top = Math.random() * (canvas.height - pipeGap - 100) + 20;
+      pipes.push({
+        x: canvas.width,
+        width: 60,
+        top,
+        gap: pipeGap,
+        passed: false
+      });
+    }
+
+    function update() {
+      if (!gameRunning) return;
+
+      bird.velocity += gravity;
+      bird.y += bird.velocity;
+
+      // Oiseau sort de l'écran
+      if (bird.y + bird.size / 2 > canvas.height || bird.y - bird.size / 2 < 0) {
+        endGame();
+        return;
+      }
+
+      if (frames % 180 === 0) createPipe();
+
+      pipes.forEach(pipe => {
+        pipe.x -= pipeSpeed;
+
+        // Collision
+        if (
+          bird.x + bird.size / 2 > pipe.x &&
+          bird.x - bird.size / 2 < pipe.x + pipe.width &&
+          (bird.y - bird.size / 2 < pipe.top || bird.y + bird.size / 2 > pipe.top + pipe.gap)
+        ) {
+          endGame();
+        }
+
+        // Score
+        if (!pipe.passed && pipe.x + pipe.width < bird.x) {
+          pipe.passed = true;
+          score++;
+          scoreboard.textContent = score;
+        }
+      });
+
+      pipes = pipes.filter(pipe => pipe.x + pipe.width > 0);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Oiseau (change de couleur s'il est mort)
+      if (deadFrame >= 0 && frames - deadFrame < 60) {
+        ctx.fillStyle = "red";
+      } else {
+        ctx.fillStyle = "yellow";
+      }
+      ctx.beginPath();
+      ctx.arc(bird.x, bird.y, bird.size / 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Tuyaux
+      ctx.fillStyle = "green";
+      pipes.forEach(pipe => {
+        ctx.fillRect(pipe.x, 0, pipe.width, pipe.top);
+        ctx.fillRect(pipe.x, pipe.top + pipe.gap, pipe.width, canvas.height);
+      });
+    }
+
+    function gameLoop() {
+      update();
+      draw();
+      frames++;
+      requestAnimationFrame(gameLoop);
+    }
+
+    function flap() {
+      if (!gameRunning) return;
+      bird.velocity = jump;
+    }
+
+    function endGame() {
+      if (!gameRunning) return;
+      gameRunning = false;
+      deadFrame = frames;
+
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem("flappyHighScore", highScore);
+      }
+
+      // Affiche l'écran de fin après un court délai
+      setTimeout(() => {
+        finalScoreDisplay.textContent = score;
+        finalHighScoreDisplay.textContent = highScore;
+        highScoreDisplay.textContent = highScore;
+        gameOverScreen.style.display = "flex";
+      }, 500);
+    }
+
+    retryButton.addEventListener("click", () => {
+      initGame();
+    });
+
+    document.addEventListener("click", flap);
+    document.addEventListener("touchstart", flap);
+    document.addEventListener("keydown", e => {
+      if (e.code === "Space" || e.code === "ArrowUp") flap();
+    });
+
+    initGame();
+    gameLoop();
+  </script>
+</body>
+</html>
