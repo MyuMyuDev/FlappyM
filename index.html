@@ -93,7 +93,7 @@
 
     const gravity = 0.8;
     const jump = -6;
-    const pipeGap = 200;
+    const pipeGap = 100;
     const pipeSpeed = 10;
 
     highScore = localStorage.getItem("flappyHighScore") || 0;
@@ -119,7 +119,7 @@
       const top = Math.random() * (canvas.height - pipeGap - 100) + 20;
       pipes.push({
         x: canvas.width,
-        width: 20,
+        width: 80,
         top,
         gap: pipeGap,
         passed: false
